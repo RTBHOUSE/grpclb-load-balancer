@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.rtbhouse.grpc.loadbalancer";
+option java_outer_classname = "SignupProto";
+
+package com.rtbhouse.grpc.loadbalancer;
+
+service ServerSignup {
+    // Bidirectional rpc for registering server in load balancer.
+
+    // A server calls the rpc when it wants to be included in load balancing policy.
+    // The following life-cycle is involved:
+    // * In the first message, the server should include 'server_details' field
+    //   and 'ready_to_serve' = true.
+    // * The first message received by the server, contains 'updates_frequency'
+    //   field. From then on, in order to stay on the LB list, the server sends
+    //   heartbeats (messages containing only 'ready_to_serve' field) at regular
+    //   intervals indicated by 'updates_frequency'.
+    // * When the server becomes unhealthy, or simply ends its work, and wants
+    //   to be removed from the LB policy immediately, it should call onCompleted().
+    //   Besides, when LB doesn't get a heartbeat after 'updates_frequency' time,
+    //   it also deletes the server from the list, but LB doesn't call onCompleted():
+    //   if delayed heartbeat will be delivered, server will reappear on the LB list.
+    rpc Signup (stream ServerReport) returns (stream LoadBalancerSignupReply) {
+    }
+}
+
+// Every message should include 'ready_to_serve' field.
+// The field 'server_details' is obligatory only for the first message
+// being sent in the rpc.
+message ServerReport {
+    bool ready_to_serve = 1;
+    Server server_details = 2;
+}
+
+// Every message from the LB contains 'confirmed' field.
+// The 'updates_frequency' is being sent by LB only in the first message
+// in rpc.
+message LoadBalancerSignupReply {
+    bool confirmed = 1;
+    int32 updates_frequency = 2;
+}
+
+// Contains server information.
+message Server {
+    // A resolved address for the server, serialized in network-byte-order. It may
+    // either be an IPv4 or IPv6 address.
+    bytes ip_address = 1;
+
+    // A resolved port number for the server.
+    int32 port = 2;
+
+    // Services names. At least one should be included.
+    repeated string services = 3;
+
+    // Server's weight used for load balancing. As default this is set to 100.
+    int32 weight = 4;
+}
