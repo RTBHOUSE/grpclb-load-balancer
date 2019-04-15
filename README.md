@@ -22,7 +22,7 @@ Things with grpclb are a bit complicated when it comes to simple examples. You c
 
 First, you may have a look on [this integration test](https://github.com/blazej24/grpc-load-balancer/blob/master/loadbalancer-standalone/src/test/java/com/rtbhouse/grpc/loadbalancer/standalone/LoadBalancerIntegrationTest.java). It shows how to use LoadBalancerConnector directly, and what is the "flow".
 
-A fully working example, you will find in the `examples` folder. There are `hello-world-lbaware-server` and `hello-world-client` packages. How to run it:
+A fully working example, you will find in the `examples` folder. There are `hello-world-lbaware-server` and `hello-world-client` packages. How to run it (all commands assume being run at project's root directory):
 
 1) You need to run loadbalancer first. After building the whole project, run for example (in root directory):
 ```sh
@@ -37,10 +37,10 @@ $ java -jar loadbalancer-standalone/target/loadbalancer-standalone-1.0-shaded.ja
 2) Run a few backend servers, the example `HelloWorldLBServer` shows how to use `BasicLoadbalancerAwareGrpcServer`:
 ```sh
 # example usage, for configuration possibilities during experiments use -help option 
-$ java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-shaded.jar -p 2222 -lb "127.0.0.1:9090" -s "hello.mimgrpc.me"
+$ java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-shaded.jar -p 2222 -lb "127.0.0.1:9090" -s "hello.mimgrpc.me:2222"
 
 # if you are testing everything locally, on one machine, use
-$ LOCAL=1 java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-shaded.jar -p 2222 -lb "127.0.0.1:9090" -s "hello.mimgrpc.me"
+$ LOCAL=1 java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-shaded.jar -p 2222 -lb "127.0.0.1:9090" -s "hello.mimgrpc.me:2222"
 
 # The server has to send its IP to the loadbalancer and by default, 
 # it autodiscovers its public IP, but, if you don't have any, setting LOCAL=1
@@ -49,8 +49,8 @@ $ LOCAL=1 java -jar examples/hello-world-lbaware-server/target/hello-world-lbawa
 
 3) Finally, you can run clients:
 ```sh
-# You can specify number of requests being done in args[0], default is 100; after every request client sleeps for 300ms.
-$ java -Dio.grpc.internal.DnsNameResolverProvider.enable_grpclb=true -jar examples/hello-world-client/target/hello-world-client-1.0-shaded.jar 100
+# In args[0], you must specify host:port for the service you want to connect. You can also add number of requests being done in args[1], default is 100; after every request client sleeps for 300ms.
+$ java -Dio.grpc.internal.DnsNameResolverProvider.enable_grpclb=true -jar examples/hello-world-client/target/hello-world-client-1.0-shaded.jar "hello.mimgrpc.me:2222" 100
 ```
 
 #### Healthchecks
