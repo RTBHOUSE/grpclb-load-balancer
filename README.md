@@ -37,10 +37,10 @@ $ java -jar loadbalancer-standalone/target/loadbalancer-standalone-1.0-shaded.ja
 2) Run a few backend servers, the example `HelloWorldLBServer` shows how to use `BasicLoadbalancerAwareGrpcServer`:
 ```sh
 # example usage, for configuration possibilities during experiments use -help option 
-$ java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-shaded.jar
+$ java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-shaded.jar -p 2222 -lb "127.0.0.1:9090" -s "hello.mimgrpc.me"
 
 # if you are testing everything locally, on one machine, use
-$ LOCAL=1 java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-shaded.jar
+$ LOCAL=1 java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-shaded.jar -p 2222 -lb "127.0.0.1:9090" -s "hello.mimgrpc.me"
 
 # The server has to send its IP to the loadbalancer and by default, 
 # it autodiscovers its public IP, but, if you don't have any, setting LOCAL=1
