@@ -1,71 +1,82 @@
 package com.rtbhouse.grpc.loadbalancer.standalone;
 
-import com.rtbhouse.grpc.loadbalancer.LoadBalanceService;
-import com.rtbhouse.grpc.loadbalancer.SignupService;
 import io.grpc.ServerBuilder;
 import java.io.IOException;
 import org.apache.commons.cli.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LoadBalancerServer {
+  private static final Logger logger = LoggerFactory.getLogger(LoadBalancerServer.class);
+
   private static io.grpc.Server server;
 
   /**
    * @param port the server is running on
-   * @param updatesFrequency specifies how often backend servers must report to signup service not
-   *     to be marked as outdated
+   * @param heartbeatsFrequency specifies how often backend servers must report to signup service
+   *     not to be marked as outdated
    * @param timeToEvict the time after outdated backend servers are evicted
    * @throws IOException
    */
-  public LoadBalancerServer(int port, int updatesFrequency, int timeToEvict) throws IOException {
-    this(ServerBuilder.forPort(port), updatesFrequency, timeToEvict);
+  public LoadBalancerServer(int port, int heartbeatsFrequency, int timeToEvict) throws IOException {
+    this(ServerBuilder.forPort(port), heartbeatsFrequency, timeToEvict);
   }
 
   /**
-   * @param updatesFrequency specifies how often backend servers must report to signup service not
-   *     to be marked as outdated
+   * @param heartbeatsFrequency specifies how often backend servers must report to signup service
+   *     not to be marked as outdated
    * @param timeToEvict the time after outdated backend servers are evicted
    * @throws IOException
    */
-  public LoadBalancerServer(ServerBuilder<?> serverBuilder, int updatesFrequency, int timeToEvict)
-      throws IOException {
+  public LoadBalancerServer(
+      ServerBuilder<?> serverBuilder, int heartbeatsFrequency, int timeToEvict) throws IOException {
     LoadBalanceService lbService = new LoadBalanceService();
-    DirectServerList serverListFetcher =
-        new DirectServerList(lbService, updatesFrequency, timeToEvict);
+    AvailableServerList serverListFetcher =
+        new AvailableServerList(lbService, heartbeatsFrequency, timeToEvict);
     server =
         serverBuilder
-            .addService(new SignupService(serverListFetcher, updatesFrequency))
+            .addService(new SignupService(serverListFetcher, heartbeatsFrequency))
             .addService(lbService)
             .build();
   }
 
-  /**
-   * Example usage: mvn exec:java
-   * -Dexec.mainClass=com.rtbhouse.grpc.loadbalancer.standalone.LoadBalancerServer -Dexec.args="-p
-   * 9090 -uf 1000 -evict 1200"
-   */
-  public static void main(String[] args) throws IOException, InterruptedException, ParseException {
+  /*
+   Example usage: java -jar loadbalancer-standalone/target/loadbalancer-standalone-1.0-shaded.jar \
+                  -port 9090 -heartbeats-frequency 3000 -time-to-evict 4000
+  */
+  public static void main(String[] args) throws IOException, InterruptedException {
     Options options = new Options();
-    options.addRequiredOption("p", "port", true, "loadbalancer-port port");
+    options.addRequiredOption("p", "port", true, "loadbalancer-port");
     options.addRequiredOption(
-        "uf",
-        "updates-frequency",
+        "hf",
+        "heartbeats-frequency",
         true,
-        "how often backend servers must to report not to be marked as outdated (ms)");
+        "how often backend servers must send heartbeats to the LB (to stay on the "
+            + "active servers list) (ms). LB will pass this information to servers.");
     options.addRequiredOption(
         "evict",
         "time-to-evict",
         true,
-        "time after backend server becomes marked as outdated (ms)");
-    CommandLineParser parser = new DefaultParser();
-    CommandLine cmd = parser.parse(options, args);
+        "if LB won't receive heartbeat that long, backend server is evicted from LB "
+            + "list (ms)");
 
-    int port = Integer.parseInt(cmd.getOptionValue("p"));
-    int updatesFrequency = Integer.parseInt(cmd.getOptionValue("uf"));
-    int timeToEvict = Integer.parseInt(cmd.getOptionValue("evict"));
+    try {
+      CommandLineParser parser = new DefaultParser();
+      CommandLine cmd = parser.parse(options, args);
 
-    LoadBalancerServer lbServer = new LoadBalancerServer(port, updatesFrequency, timeToEvict);
-    lbServer.start();
-    lbServer.blockUntilShutdown();
+      int port = Integer.parseInt(cmd.getOptionValue("p"));
+      int heartbeatsFrequency = Integer.parseInt(cmd.getOptionValue("hf"));
+      int timeToEvict = Integer.parseInt(cmd.getOptionValue("evict"));
+
+      LoadBalancerServer lbServer = new LoadBalancerServer(port, heartbeatsFrequency, timeToEvict);
+      lbServer.start();
+      logger.info("Loadbalancer started at port {}", port);
+      lbServer.blockUntilShutdown();
+    } catch (ParseException e) {
+      System.err.println(e.getLocalizedMessage());
+      HelpFormatter formatter = new HelpFormatter();
+      formatter.printHelp("ant", options);
+    }
   }
 
   public void start() throws IOException {

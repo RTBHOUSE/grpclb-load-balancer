@@ -36,9 +36,9 @@ public class HelloWorldClient {
   }
 
   /** Say hello to server. */
-  public void greet(String name) {
-    logger.info("Will try to greet {} ...", name);
-    HelloRequest request = HelloRequest.newBuilder().setName(name).build();
+  public void greet(String message) {
+    logger.info("Will try to send: {} ...", message);
+    HelloRequest request = HelloRequest.newBuilder().setMessage(message).build();
     HelloReply response;
     try {
       response = blockingStub.sayHello(request);
@@ -47,7 +47,7 @@ public class HelloWorldClient {
       return;
     }
 
-    logger.info("Greeting: {}", response.getMessage());
+    logger.info("Response: {}", response.getMessage());
     Integer count = counts.putIfAbsent(response.getAddr(), 0);
     if (count == null) count = 0;
     counts.put(response.getAddr(), count + 1);
@@ -59,19 +59,27 @@ public class HelloWorldClient {
     }
   }
 
-  /**
-   * Greet server. If provided, the first element of {@code args} is the name to use in the
-   * greeting.
-   */
+  /* Example usage:
+    java -Dio.grpc.internal.DnsNameResolverProvider.enable_grpclb=true -jar \
+    examples/hello-world-client/target/hello-world-client-1.0-shaded.jar \
+    "hello.mimgrpc.me:2222" 100
+  */
+
   public static void main(String[] args) throws Exception {
-    HelloWorldClient client = new HelloWorldClient("hello.mimgrpc.me", 2222);
+    if (args.length == 0) {
+      logger.error("Usage: host:port [requests_number]");
+      System.exit(1);
+    }
+
+    String[] service = args[0].split(":");
+    HelloWorldClient client = new HelloWorldClient(service[0], Integer.parseInt(service[1]));
     try {
       int times = 100;
       if (args.length == 1) {
         times = Integer.parseInt(args[0]);
       }
       for (int i = 0; i < times; i++) {
-        client.greet("world");
+        client.greet("Hello!");
         Thread.sleep(300);
       }
     } finally {

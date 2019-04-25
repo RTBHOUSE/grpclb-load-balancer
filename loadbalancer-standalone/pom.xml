@@ -17,7 +17,12 @@
     <dependencies>
         <dependency>
             <groupId>com.rtbhouse.grpc</groupId>
-            <artifactId>common-lb</artifactId>
+            <artifactId>common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.rtbhouse.grpc</groupId>
+            <artifactId>basic-loadbalancer-aware-server</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <!-- GRPC dependencies -->
@@ -95,6 +100,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

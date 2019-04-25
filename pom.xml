@@ -8,21 +8,16 @@
     <name>grpc-load-balancer</name>
     <modules>
         <module>loadbalancer-standalone</module>
-        <module>loadbalancer-zookeeper</module>
         <module>common</module>
-        <module>common-lb</module>
         <module>basic-loadbalancer-aware-server</module>
-        <module>basic-zookeeper-aware-server</module>
         <module>examples/hello-world-common</module>
-        <module>examples/hello-world-zookeeper-server</module>
-        <module>examples/hello-world-zookeeper-healthcheck-server</module>
         <module>examples/hello-world-client</module>
         <module>examples/hello-world-lbaware-server</module>
     </modules>
 
     <properties>
         <project.version>1.0</project.version>
-        <java.version>1.8</java.version>
+        <java.version>8</java.version>
 
         <grpc.version>1.15.0</grpc.version>
         <proto.google.common.protos.version>1.0.0</proto.google.common.protos.version>
@@ -117,6 +112,13 @@
                 <version>${slf4j.version}</version>
             </dependency>
 
+            <!-- For DNS SRV records resolving -->
+            <dependency>
+                <groupId>com.spotify</groupId>
+                <artifactId>dns</artifactId>
+                <version>3.1.5</version>
+            </dependency>
+
             <!--test dependecies-->
             <dependency>
                 <groupId>junit</groupId>
@@ -178,7 +180,49 @@
         </dependencies>
     </dependencyManagement>
 
+    <profiles>
+        <!-- to set Java version: if JRE 8, we have to use source and target flags; starting from JRE 9 we should use
+         release flag (if not, grpc packages can't be compiled) -->
+        <profile>
+            <id>java9-and-above</id>
+            <activation>
+                <jdk>[1.9,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <release>${java.version}</release>
+                        </configuration>
+                        <version>${maven.compiler.plugin.version}</version>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>only-java8</id>
+            <activation>
+                <jdk>1.8</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <source>1.8</source>
+                            <target>1.8</target>
+                        </configuration>
+                        <version>${maven.compiler.plugin.version}</version>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
     <build>
+
         <!-- for compiling .proto -->
         <extensions>
             <extension>
@@ -189,17 +233,6 @@
         </extensions>
         <pluginManagement>
             <plugins>
-                <!-- to set Java version -->
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <configuration>
-                        <source>${java.version}</source>
-                        <target>${java.version}</target>
-                    </configuration>
-                    <version>${maven.compiler.plugin.version}</version>
-                </plugin>
-
                 <!-- for compiling .proto -->
                 <plugin>
                     <groupId>org.xolstice.maven.plugins</groupId>
@@ -225,7 +258,7 @@
                         <execution>
                             <id>test-classes</id>
                             <configuration>
-                                <outputDirectory>${project.basedir}/src/test/generated/java</outputDirectory>
+                                <outputDirectory>${project.basedir}/target/generated-test-sources</outputDirectory>
                             </configuration>
                             <phase>generate-test-sources</phase>
                             <goals>

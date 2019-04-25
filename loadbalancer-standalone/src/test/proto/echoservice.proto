@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_outer_classname = "EchoProto";
+option objc_class_prefix = "HLW";
+
+package com.rtbhouse.grpc.loadbalancer.tests;
+
+// The greeting service definition.
+service Echo {
+    // Sends a greeting
+    rpc SayHello (EchoRequest) returns (EchoReply) {
+    }
+}
+
+// The request message
+message EchoRequest {
+    string message = 1;
+}
+
+// The response message
+message EchoReply {
+    string message = 1;
+    string server_num = 2;
+}

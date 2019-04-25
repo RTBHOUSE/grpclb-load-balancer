@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class HealthCheckCapableGrpcServerBase extends GrpcServerBase {
+  public static final long DEFAULT_HEALTH_INSPECTOR_DELAY = 5000;
   protected final boolean checkingHealth;
   protected final HealthBlockingStub healthBlockingStub;
   private static final Logger logger =
@@ -27,7 +28,7 @@ public abstract class HealthCheckCapableGrpcServerBase extends GrpcServerBase {
   private final Server inProcessServer;
   private final ManagedChannel inProcessChannel;
 
-  private long healthInspectorDelay = 5000;
+  protected long healthInspectorDelay = DEFAULT_HEALTH_INSPECTOR_DELAY;
   private ScheduledFuture<?> healthInspectorHandle;
 
   public HealthCheckCapableGrpcServerBase(int port, BindableService... services) {
@@ -41,22 +42,20 @@ public abstract class HealthCheckCapableGrpcServerBase extends GrpcServerBase {
   public HealthCheckCapableGrpcServerBase(
       int port, HealthImplBase healthService, BindableService... services) throws IOException {
     super(port, services);
-    String uniqueName = InProcessServerBuilder.generateName();
-    inProcessServer =
-        InProcessServerBuilder.forName(uniqueName).addService(healthService).build().start();
-    inProcessChannel = InProcessChannelBuilder.forName(uniqueName).build();
-    healthBlockingStub = HealthGrpc.newBlockingStub(inProcessChannel);
-    checkingHealth = true;
-  }
 
-  public HealthCheckCapableGrpcServerBase(
-      int port,
-      HealthImplBase healthService,
-      long healthInspectorDelay,
-      BindableService... services)
-      throws IOException {
-    this(port, healthService, services);
-    this.healthInspectorDelay = healthInspectorDelay;
+    if (healthService == null) {
+      inProcessServer = null;
+      inProcessChannel = null;
+      healthBlockingStub = null;
+      checkingHealth = false;
+    } else {
+      String uniqueName = InProcessServerBuilder.generateName();
+      inProcessServer =
+          InProcessServerBuilder.forName(uniqueName).addService(healthService).build().start();
+      inProcessChannel = InProcessChannelBuilder.forName(uniqueName).build();
+      healthBlockingStub = HealthGrpc.newBlockingStub(inProcessChannel);
+      checkingHealth = true;
+    }
   }
 
   @Override

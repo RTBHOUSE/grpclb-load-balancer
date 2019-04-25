@@ -13,13 +13,14 @@ service ServerSignup {
     // The following life-cycle is involved:
     // * In the first message, the server should include 'server_details' field
     //   and 'ready_to_serve' = true.
-    // * The first message received by the server, contains 'updates_frequency'
+    // * The first message received by the server, contains 'heartbeats_frequency'
     //   field. From then on, in order to stay on the LB list, the server sends
     //   heartbeats (messages containing only 'ready_to_serve' field) at regular
-    //   intervals indicated by 'updates_frequency'.
+    //   intervals indicated by 'heartbeats_frequency'. Note that server appears
+    //   on the list after sending the first "real" heartbeat (second message).
     // * When the server becomes unhealthy, or simply ends its work, and wants
     //   to be removed from the LB policy immediately, it should call onCompleted().
-    //   Besides, when LB doesn't get a heartbeat after 'updates_frequency' time,
+    //   Besides, when LB doesn't get a heartbeat after 'heartbeats_frequency' time,
     //   it also deletes the server from the list, but LB doesn't call onCompleted():
     //   if delayed heartbeat will be delivered, server will reappear on the LB list.
     rpc Signup (stream ServerReport) returns (stream LoadBalancerSignupReply) {
@@ -35,11 +36,11 @@ message ServerReport {
 }
 
 // Every message from the LB contains 'confirmed' field.
-// The 'updates_frequency' is being sent by LB only in the first message
+// The 'heartbeats_frequency' is being sent by LB only in the first message
 // in rpc.
 message LoadBalancerSignupReply {
     bool confirmed = 1;
-    int32 updates_frequency = 2;
+    int32 heartbeats_frequency = 2;
 }
 
 // Contains server information.
