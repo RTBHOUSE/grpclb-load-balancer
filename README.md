@@ -1,11 +1,11 @@
 # gRPC-LB load balancer
-Server-side gRPC-LB implementation, LBConnector for backend servers
+Server-side gRPC-LB implementation, LoadBalancerConnector for backend servers
 
 ### Overview
 
 First, you should read [how load balancing works](https://github.com/grpc/grpc/blob/master/doc/load-balancing.md) for gRPC.
 
-This project allows you to use grpclb-based load balancing - grpclb is a gRPC protocol defined [here](https://github.com/grpc/grpc-java/blob/master/grpclb/src/main/proto/grpc/lb/v1/load_balancer.proto). There is a client-side implementation of this protocol in all gRPC clients. But, in order to get this work, you need a load balancer supporting server-side of the protocol. Here comes `loadbalancer-standalone` project.
+This project allows you to use grpclb-based load balancing - grpclb is a gRPC protocol defined [here](https://github.com/grpc/grpc-java/blob/master/grpclb/src/main/proto/grpc/lb/v1/load_balancer.proto). There is a client-side implementation of this protocol in all gRPC clients. But, in order to get this to work, you need a load balancer supporting server-side of the protocol. Here comes `loadbalancer-standalone` project.
 
 It is a standalone server, serving two gRPC services: LoadBalancerService (aka grpclb) and SignupService [defined here](https://github.com/RTBHOUSE/grpclb-load-balancer/blob/6db1584360ba6ae9dc36a94e2cbe00492a90b695/common/src/main/proto/signup.proto). Load balancer needs to have an up-to-date list of backend servers, so SignupService is being used to register them in load balancer.
 
@@ -45,6 +45,9 @@ $ LOCAL=1 java -jar examples/hello-world-lbaware-server/target/hello-world-lbawa
 # The server has to send its IP to the loadbalancer and by default, 
 # it autodiscovers its public IP, but, if you don't have any, setting LOCAL=1
 # causes that server uses 127.0.0.1 as its address.
+
+# You can also use "dns_resolve" in -lb option, in order to have lb addresses resolved automatically, 
+# from DNS, similarly to clients.
 ```
 
 3) Finally, you can run clients:
@@ -55,7 +58,3 @@ $ java -Dio.grpc.internal.DnsNameResolverProvider.enable_grpclb=true -jar exampl
 
 #### Healthchecks
 With `basic-loadbalancer-aware-server` you can use your custom healthcheck, provided as [Health service](https://github.com/grpc/grpc/blob/master/doc/health-checking.md) implementation. Server will run an InProcessServer with this service, call `Check` every 5s (can be configured) and inform LB about status changes (by `pause()` and `resume()` in `LBConnector`).
-
-#### Zookeeper
-There is an alternative implementation of the LB and BasicServer, that uses Zookeeper cluster for registering servers.
-We have a `BasicZookeeperAwareServer` class, which is similar to `BasicLoadbalancerAwareServer`, but instead of registering directly in loadbalancer, it registers server in Zookeeper cluster (creates an ephemeral node at given path). `loadbalancer-zookeeper` reads the server list from this path. The rest works just the same as above, the difference is the place where we store the list of active servers. This implementation was only an intermediate step during development, and if you don't have clear reasons to use Zookeeper version, you should use standalone version.
