@@ -62,11 +62,6 @@
             <artifactId>grpc-testing</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>com.rtbhouse.grpc</groupId>
-            <artifactId>common-lb</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>

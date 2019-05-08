@@ -19,7 +19,7 @@
         <project.version>1.0</project.version>
         <java.version>8</java.version>
 
-        <grpc.version>1.15.0</grpc.version>
+        <grpc.version>1.16.1</grpc.version>
         <proto.google.common.protos.version>1.0.0</proto.google.common.protos.version>
         <protobuf.version>3.5.1</protobuf.version>
         <protoc.version>3.5.1-1</protoc.version>
@@ -159,17 +159,7 @@
             </dependency>
             <dependency>
                 <groupId>com.rtbhouse.grpc</groupId>
-                <artifactId>common-lb</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.rtbhouse.grpc</groupId>
                 <artifactId>hello-world-common</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.rtbhouse.grpc</groupId>
-                <artifactId>basic-zookeeper-aware-server</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

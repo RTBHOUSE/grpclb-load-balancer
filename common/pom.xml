@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>common</artifactId>
     <packaging>jar</packaging>
-    <name>common-lb</name>
+    <name>common</name>
     <parent>
         <groupId>com.rtbhouse.grpc</groupId>
         <artifactId>grpc-load-balancer</artifactId>
