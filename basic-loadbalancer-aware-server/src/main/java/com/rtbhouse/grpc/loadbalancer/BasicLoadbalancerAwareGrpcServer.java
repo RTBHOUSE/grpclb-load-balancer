@@ -104,7 +104,7 @@ public class BasicLoadbalancerAwareGrpcServer extends HealthCheckCapableGrpcServ
      * Provide list of load balancers' addresses in host:port format directly. Alternative:
      * useDnsServiceName()
      */
-    public Builder useLbAddresses(String[] val) {
+    public Builder useLbAddresses(String... val) {
       lbAddresses = val;
       return this;
     }
@@ -126,10 +126,11 @@ public class BasicLoadbalancerAwareGrpcServer extends HealthCheckCapableGrpcServ
 
     /**
      * Names of services (corresponding to provided bindable services) that this server serves, in
-     * host:port format. Those have to be the same names, that clients use when creating gRPC
-     * channels, e.g. through ManagedChannelBuilder.forAddress(host, port)
+     * host, or host:port format. Those have to be the same names, that clients use when creating
+     * gRPC channels, e.g. through ManagedChannelBuilder.fotTarget(host), or
+     * ManagedChannelBuilder.forAddress(host, port)
      */
-    public Builder setNamesOfServices(String[] val) {
+    public Builder setNamesOfServices(String... val) {
       namesOfServices = val;
       return this;
     }

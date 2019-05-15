@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,9 +41,6 @@ public class LoadBalancerIntegrationTest {
    * that you use to create client's channel (look at SimpleEchoClient class). */
   private static final String[] services = new String[] {"hello.mimgrpc.me:5000"};
 
-  private int s1_response_count;
-  private int s2_response_count;
-
   private LoadBalancerServer loadbalancer;
 
   @BeforeClass
@@ -54,18 +50,12 @@ public class LoadBalancerIntegrationTest {
     System.setProperty("io.grpc.internal.DnsNameResolverProvider.enable_grpclb", "true");
   }
 
-  //    @Before
   public void startLoadbalancer() throws IOException {
     loadbalancer = new LoadBalancerServer(9090, 3000, 4000);
     loadbalancer.start();
     logger.info(
         "Started loadbalancer server at port 9090. LB will reqeust heartbeats from backend servers every 3s, "
             + "and will evict a server when no heartbeat is sent for 4s.");
-  }
-
-  @Before
-  public void zeroCounters() {
-    s1_response_count = s2_response_count = 0;
   }
 
   @After
@@ -107,8 +97,8 @@ public class LoadBalancerIntegrationTest {
     Thread.sleep(3000);
 
     logger.info("Starting client, making requests every 0,1s for 10 seconds");
-    Thread client_thread = new SimpleEchoClient(100);
-    client_thread.start();
+    SimpleEchoClient client = new SimpleEchoClient(100);
+    client.start();
     Thread.sleep(3000);
 
     logger.info("Shutting down 1111 server");
@@ -132,7 +122,7 @@ public class LoadBalancerIntegrationTest {
     logger.info("Server 2222 down");
     Thread.sleep(3000);
 
-    client_thread.join();
+    client.join();
 
     logger.info("Shutting down 1111 server");
     s1_connector.stop();
@@ -140,7 +130,7 @@ public class LoadBalancerIntegrationTest {
     s1.awaitTermination();
     logger.info("Server 1111 down");
 
-    Assert.assertEquals(100, s1_response_count + s2_response_count);
+    Assert.assertEquals(100, client.s1_response_count + client.s2_response_count);
   }
 
   @Test
@@ -181,9 +171,9 @@ public class LoadBalancerIntegrationTest {
     Thread.sleep(3000);
 
     logger.info("Starting client, making requests every 0,1s for 10 seconds (total 100 requests)");
-    Thread client_thread = new SimpleEchoClient(100);
-    client_thread.start();
-    client_thread.join();
+    SimpleEchoClient client = new SimpleEchoClient(100);
+    client.start();
+    client.join();
 
     logger.info("Shutting down 1111 server");
     s1_connector.stop();
@@ -198,8 +188,8 @@ public class LoadBalancerIntegrationTest {
     logger.info("Server 2222 down");
     Thread.sleep(3000);
 
-    Assert.assertEquals(100, s1_response_count + s2_response_count);
-    Assert.assertTrue(Math.abs(3 * s1_response_count - s2_response_count) < 25);
+    Assert.assertEquals(100, client.s1_response_count + client.s2_response_count);
+    Assert.assertTrue(Math.abs(3 * client.s1_response_count - client.s2_response_count) < 25);
   }
 
   @Test
@@ -210,9 +200,7 @@ public class LoadBalancerIntegrationTest {
             1111, // our server port
             InetAddress.getLoopbackAddress(), // our server address
             lb_addresses,
-            services,
-            AvailableServerList.BackendServer.DEFAULT_WEIGHT); // TODO: new constructor without it
-
+            services);
     s1.start();
     logger.info("Started backend server at port 1111 and weight 100.");
     s1_connector.start();
@@ -224,23 +212,19 @@ public class LoadBalancerIntegrationTest {
     s1_connector.resume();
     Thread.sleep(100);
 
-    //    Thread.sleep(100);
-    //    logger.info("Stopping load balancer and wait 5s...");
-    //    stopLoadbalancer();
-
     Thread.sleep(5000);
     logger.info("Starting loadbalancer...");
     startLoadbalancer();
 
-    Thread client_thread = new SimpleEchoClient(5);
+    SimpleEchoClient client = new SimpleEchoClient(5);
     logger.info("Starting client, making 5 requests...");
-    client_thread.start();
-    client_thread.join();
+    client.start();
+    client.join();
 
     s1.shutdownNow();
     s1_connector.stop();
 
-    Assert.assertEquals(5, s1_response_count);
+    Assert.assertEquals(5, client.s1_response_count);
   }
 
   private class EchoService extends EchoGrpc.EchoImplBase {
@@ -264,6 +248,8 @@ public class LoadBalancerIntegrationTest {
         LoggerFactory.getLogger(LoadBalancerIntegrationTest.SimpleEchoClient.class);
 
     private int no_requests;
+    private int s1_response_count;
+    private int s2_response_count;
 
     public SimpleEchoClient(int no_requests) {
       this.no_requests = no_requests;

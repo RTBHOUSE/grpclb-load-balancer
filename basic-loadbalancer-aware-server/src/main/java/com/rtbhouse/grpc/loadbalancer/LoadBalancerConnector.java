@@ -5,6 +5,7 @@ import com.spotify.dns.DnsSrvResolvers;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -29,11 +30,34 @@ public class LoadBalancerConnector {
   public static final int WEIGHT_NOT_SET = -1;
   public static final String GRPCLB_DNS_PREFIX = "_grpclb._tcp.";
   private final List<SingleLoadBalancerConnector> lbConnectors;
-  private final InetAddress serverAddress;
-  private final int serverPort;
-  private final int serverWeight;
-  private final String[] services;
   private ConnectorStatus status;
+
+  private LoadBalancerConnector(
+      int serverPort,
+      InetAddress serverAddress,
+      String[] services,
+      Supplier<List<Pair<String, Integer>>> s,
+      int serverWeight) {
+    this.status = ConnectorStatus.STOPPED;
+
+    this.lbConnectors =
+        s.get()
+            .stream()
+            .map(
+                address ->
+                    new SingleLoadBalancerConnector(
+                        serverPort,
+                        serverAddress,
+                        address.getFirst(),
+                        address.getSecond(),
+                        services,
+                        serverWeight))
+            .collect(Collectors.toList());
+
+    if (lbConnectors.isEmpty()) {
+      throw new IllegalStateException("Load balancers address list cannot be empty!");
+    }
+  }
 
   public LoadBalancerConnector(
       int serverPort,
@@ -41,22 +65,12 @@ public class LoadBalancerConnector {
       String[] lbAddresses,
       String[] services,
       int serverWeight) {
-    this.serverPort = serverPort;
-    this.serverAddress = serverAddress;
-    this.services = services;
-    this.serverWeight = serverWeight;
-    this.lbConnectors = getLbConnectorsList(lbAddresses);
-    this.status = ConnectorStatus.STOPPED;
+    this(serverPort, serverAddress, services, () -> getLbConnectorsList(lbAddresses), serverWeight);
   }
 
   public LoadBalancerConnector(
       int serverPort, InetAddress serverAddress, String[] lbAddresses, String[] services) {
-    this.serverPort = serverPort;
-    this.serverAddress = serverAddress;
-    this.services = services;
-    this.serverWeight = WEIGHT_NOT_SET;
-    this.lbConnectors = getLbConnectorsList(lbAddresses);
-    this.status = ConnectorStatus.STOPPED;
+    this(serverPort, serverAddress, lbAddresses, services, WEIGHT_NOT_SET);
   }
 
   public LoadBalancerConnector(
@@ -65,25 +79,20 @@ public class LoadBalancerConnector {
       String serviceDnsName,
       String[] services,
       int serverWeight) {
-    this.serverPort = serverPort;
-    this.serverAddress = serverAddress;
-    this.services = services;
-    this.serverWeight = serverWeight;
-    this.lbConnectors = getLbConnectorsList(getResolvedLbAdresses(serviceDnsName));
-    this.status = ConnectorStatus.STOPPED;
+    this(
+        serverPort,
+        serverAddress,
+        services,
+        () -> getResolvedLbAdresses(serviceDnsName),
+        serverWeight);
   }
 
   public LoadBalancerConnector(
       int serverPort, InetAddress serverAddress, String serviceDnsName, String[] services) {
-    this.serverPort = serverPort;
-    this.serverAddress = serverAddress;
-    this.services = services;
-    this.serverWeight = WEIGHT_NOT_SET;
-    this.lbConnectors = getLbConnectorsList(getResolvedLbAdresses(serviceDnsName));
-    this.status = ConnectorStatus.STOPPED;
+    this(serverPort, serverAddress, serviceDnsName, services, WEIGHT_NOT_SET);
   }
 
-  private List<SingleLoadBalancerConnector> getLbConnectorsList(String[] lbAddresses) {
+  private static List<Pair<String, Integer>> getLbConnectorsList(String[] lbAddresses) {
     List<Pair<String, Integer>> list = new ArrayList<>();
     for (String address : lbAddresses) {
       String[] parsed = address.split(":");
@@ -92,35 +101,11 @@ public class LoadBalancerConnector {
             "Load balancer address should be in host:serverPort format.");
       list.add(new Pair<>(parsed[0], Integer.parseInt(parsed[1])));
     }
-    return getLbConnectorsList(list);
+    return list;
   }
 
-  private List<SingleLoadBalancerConnector> getLbConnectorsList(
-      List<Pair<String, Integer>> lbAdresses) {
-    if (lbAdresses.isEmpty()) {
-      throw new IllegalStateException("Load balancers address list cannot be empty!");
-    }
-    return lbAdresses
-        .stream()
-        .map(
-            address ->
-                new SingleLoadBalancerConnector(
-                    serverPort,
-                    serverAddress,
-                    address.getFirst(),
-                    address.getSecond(),
-                    services,
-                    serverWeight))
-        .collect(Collectors.toList());
-  }
-
-  private List<Pair<String, Integer>> getResolvedLbAdresses(String dnsName) {
-    DnsSrvResolver resolver =
-        DnsSrvResolvers.newBuilder()
-            .cachingLookups(true)
-            .retainingDataOnFailures(true)
-            .dnsLookupTimeoutMillis(5000)
-            .build();
+  private static List<Pair<String, Integer>> getResolvedLbAdresses(String dnsName) {
+    DnsSrvResolver resolver = DnsSrvResolvers.newBuilder().dnsLookupTimeoutMillis(10000).build();
 
     return resolver
         .resolve(GRPCLB_DNS_PREFIX + dnsName)
