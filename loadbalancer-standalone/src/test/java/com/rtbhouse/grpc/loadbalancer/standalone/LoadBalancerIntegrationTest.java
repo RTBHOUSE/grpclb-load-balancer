@@ -279,6 +279,8 @@ public class LoadBalancerIntegrationTest {
           "Client summary: responses from s1: {}, from s2: {}",
           s1_response_count,
           s2_response_count);
+
+      channel.shutdownNow();
       logger.info("Client exits");
     }
   }

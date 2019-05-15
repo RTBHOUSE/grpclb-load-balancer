@@ -24,13 +24,14 @@ import java.util.stream.Collectors;
  *
  * <p>You can pause/resume, or stop/start the connector multiple times. Notice, that using
  * pause()/resume() is less expensive than stop()/start(), because gRPC channel is not being closed
- * then.
+ * then. When there is no state change needed (e.g. when you call resume() on a working connector),
+ * pause() and resume() won't be synchronizing. Start()/stop() are always synchronizing.
  */
 public class LoadBalancerConnector {
   public static final int WEIGHT_NOT_SET = -1;
   public static final String GRPCLB_DNS_PREFIX = "_grpclb._tcp.";
   private final List<SingleLoadBalancerConnector> lbConnectors;
-  private ConnectorStatus status;
+  private volatile ConnectorStatus status;
 
   private LoadBalancerConnector(
       int serverPort,
@@ -114,9 +115,9 @@ public class LoadBalancerConnector {
         .collect(Collectors.toList());
   }
 
-  public void start() {
+  public synchronized void start() {
     if (status != ConnectorStatus.STOPPED) {
-      throw new IllegalStateException();
+      throw new IllegalStateException("Only stopped connector can be started.");
     }
     for (SingleLoadBalancerConnector lbConnector : lbConnectors) {
       lbConnector.start();
@@ -124,9 +125,9 @@ public class LoadBalancerConnector {
     status = ConnectorStatus.WORKING;
   }
 
-  public void stop() {
+  public synchronized void stop() {
     if (status == ConnectorStatus.STOPPED) {
-      throw new IllegalStateException();
+      return;
     }
     for (SingleLoadBalancerConnector lbConnector : lbConnectors) {
       lbConnector.stop();
@@ -135,23 +136,38 @@ public class LoadBalancerConnector {
   }
 
   public void resume() {
-    if (status != ConnectorStatus.PAUSED) {
-      throw new IllegalStateException();
+    if (status != ConnectorStatus.WORKING) {
+      doResume();
     }
-    for (SingleLoadBalancerConnector lbConnector : lbConnectors) {
-      lbConnector.resume();
+  }
+
+  private synchronized void doResume() {
+    if (status == ConnectorStatus.STOPPED) {
+      throw new IllegalStateException(
+          "Stopped connector can't be resumed, you should call start() instead.");
+    } else if (status == ConnectorStatus.PAUSED) {
+      for (SingleLoadBalancerConnector lbConnector : lbConnectors) {
+        lbConnector.resume();
+      }
+      status = ConnectorStatus.WORKING;
     }
-    status = ConnectorStatus.WORKING;
   }
 
   public void pause() {
-    if (status != ConnectorStatus.WORKING) {
-      throw new IllegalStateException();
+    if (status != ConnectorStatus.PAUSED) {
+      doPause();
     }
-    for (SingleLoadBalancerConnector lbConnector : lbConnectors) {
-      lbConnector.pause();
+  }
+
+  private synchronized void doPause() {
+    if (status == ConnectorStatus.STOPPED) {
+      throw new IllegalStateException("Stopped connector can't be paused.");
+    } else if (status == ConnectorStatus.WORKING) {
+      for (SingleLoadBalancerConnector lbConnector : lbConnectors) {
+        lbConnector.pause();
+      }
+      status = ConnectorStatus.PAUSED;
     }
-    status = ConnectorStatus.PAUSED;
   }
 
   private enum ConnectorStatus {
