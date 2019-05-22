@@ -1,0 +1,8 @@
+FROM maven:3.6.0-jdk-11
+
+WORKDIR /sources
+COPY . /sources
+
+ENV BUILDERS_SHARE=/root/builders_share
+
+CMD mvn -T1C -f pom.xml clean install -Duser.home=${BUILDERS_SHARE} -Dmaven.test.skip -am -pl :loadbalancer-standalone
