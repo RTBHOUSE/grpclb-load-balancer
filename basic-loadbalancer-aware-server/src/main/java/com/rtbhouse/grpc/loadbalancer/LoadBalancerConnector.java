@@ -5,7 +5,6 @@ import com.spotify.dns.DnsSrvResolvers;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -37,13 +36,12 @@ public class LoadBalancerConnector {
       int serverPort,
       InetAddress serverAddress,
       String[] services,
-      Supplier<List<Pair<String, Integer>>> s,
+      List<Pair<String, Integer>> s,
       int serverWeight) {
     this.status = ConnectorStatus.STOPPED;
 
     this.lbConnectors =
-        s.get()
-            .stream()
+        s.stream()
             .map(
                 address ->
                     new SingleLoadBalancerConnector(
@@ -66,7 +64,7 @@ public class LoadBalancerConnector {
       String[] lbAddresses,
       String[] services,
       int serverWeight) {
-    this(serverPort, serverAddress, services, () -> getLbConnectorsList(lbAddresses), serverWeight);
+    this(serverPort, serverAddress, services, getLbConnectorsList(lbAddresses), serverWeight);
   }
 
   public LoadBalancerConnector(
@@ -80,12 +78,7 @@ public class LoadBalancerConnector {
       String serviceDnsName,
       String[] services,
       int serverWeight) {
-    this(
-        serverPort,
-        serverAddress,
-        services,
-        () -> getResolvedLbAdresses(serviceDnsName),
-        serverWeight);
+    this(serverPort, serverAddress, services, getResolvedLbAdresses(serviceDnsName), serverWeight);
   }
 
   public LoadBalancerConnector(

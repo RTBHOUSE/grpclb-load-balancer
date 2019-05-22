@@ -206,7 +206,7 @@ class SingleLoadBalancerConnector {
       logger.debug("Sending heartbeat: ready to serve {}", report.getReadyToServe());
 
     } else {
-      logger.warn(
+      logger.debug(
           "Requested to send report when connector status is neither CONNECTING nor WORKING "
               + "(it is: {})",
           status);

@@ -27,8 +27,8 @@ public class AvailableServerList {
    */
   private final Map<String, Set<BackendServer>> serviceToServers = new ConcurrentHashMap<>();
 
-  /** Indicates state of serviceToServers. Every add/remove operation should increase state. */
-  private final AtomicLong state = new AtomicLong(STARTING_STATE);
+  /** Indicates version of serviceToServers. Every add/remove operation should increase version. */
+  private final AtomicLong version = new AtomicLong(STARTING_STATE);
 
   public AvailableServerList(LoadBalanceService lbService) {
     this(lbService, 1000, 1200);
@@ -63,7 +63,7 @@ public class AvailableServerList {
 
       for (BackendServer server : servers) {
         if (currentTime - server.getTimestamp() > timeToEvict && servers.remove(server)) {
-          state.incrementAndGet();
+          version.incrementAndGet();
           outdated = true;
         }
       }
@@ -120,7 +120,7 @@ public class AvailableServerList {
       serviceToServers.putIfAbsent(service, ConcurrentHashMap.newKeySet());
       Set<BackendServer> servers = serviceToServers.get(service);
       if (servers.add(server)) {
-        state.incrementAndGet();
+        version.incrementAndGet();
         tryToUpdate(service);
       }
     }
@@ -133,7 +133,7 @@ public class AvailableServerList {
       Set<BackendServer> servers = serviceToServers.get(service);
 
       if (servers.remove(server)) {
-        state.incrementAndGet();
+        version.incrementAndGet();
         tryToUpdate(service);
       } else {
         res = false;
@@ -144,16 +144,16 @@ public class AvailableServerList {
   }
 
   /**
-   * Attempts to update lbService with servers list for given service. Firstly, saves current state.
-   * Secondly, builds servers proto list. Lastly, checks if the state has changed in the meantime.
-   * If so, then abandons.
+   * Attempts to update lbService with servers list for given service. Firstly, saves current
+   * version. Secondly, builds servers proto list. Lastly, checks if the version has changed in the
+   * meantime. If so, then abandons.
    */
   private void tryToUpdate(String service) {
-    long curState = state.get();
+    long curState = version.get();
     ServerList servers = getServersList(service);
-    if (curState == state.get()) {
+    if (curState == version.get()) {
       synchronized (lbService) {
-        if (curState == state.get()) {
+        if (curState == version.get()) {
           lbService.update(service, servers);
         }
       }

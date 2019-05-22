@@ -8,8 +8,15 @@ import java.net.URL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Addresses {
+public final class Addresses {
   private static final Logger logger = LoggerFactory.getLogger(Addresses.class);
+
+  // This service is used to obtain our public IP address, in case when we are behind NAT and have
+  // only e.g. 192.168.*
+  // address bind to our network interface.
+  private static final String CHECK_IP_URL = "http://checkip.amazonaws.com";
+
+  private Addresses() {}
 
   public static InetAddress getServerAddress(boolean natIsUsed) {
     try {
@@ -18,7 +25,7 @@ public class Addresses {
 
       String address;
       if (natIsUsed) {
-        URL whatIsMyIp = new URL("http://checkip.amazonaws.com");
+        URL whatIsMyIp = new URL(CHECK_IP_URL);
         BufferedReader in = new BufferedReader(new InputStreamReader(whatIsMyIp.openStream()));
         address = in.readLine();
         in.close();

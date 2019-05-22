@@ -2,7 +2,7 @@ package com.rtbhouse.grpc.loadbalancer;
 
 import java.util.Objects;
 
-public class Pair<T, S> {
+class Pair<T, S> {
   private T first;
   private S second;
 
