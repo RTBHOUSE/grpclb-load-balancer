@@ -41,12 +41,12 @@
         <shaded.main.class>NonExistingClass</shaded.main.class>  <!-- just a placeholder -->
     </properties>
 
-    <repositories>
-        <repository>
-            <id>Adpilot</id>
-            <url>http://nexus.adpilot-rtb.net:8081/content/groups/public</url>
-        </repository>
-    </repositories>
+    <!--<repositories>-->
+        <!--<repository>-->
+            <!--<id>Adpilot</id>-->
+            <!--<url>http://nexus.adpilot-rtb.net:8081/content/groups/public</url>-->
+        <!--</repository>-->
+    <!--</repositories>-->
 
     <distributionManagement>
         <repository>
