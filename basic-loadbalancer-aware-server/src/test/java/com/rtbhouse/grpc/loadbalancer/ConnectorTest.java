@@ -38,7 +38,6 @@ public class ConnectorTest {
   private Integer backendServerPort = 9090;
   private InetAddress backendServerAddress = InetAddress.getLoopbackAddress();
   private String[] backendServices = {"hello.mimgrpc.me:2222", "hello2.mimgrpc.me:2222"};
-  private Integer backendServerWeight = BackendServer.DEFAULT_WEIGHT;
   private Integer heartbeatsFrequency = 400;
   private AtomicInteger noOfReportsReceived = new AtomicInteger();
   private AtomicInteger noOfInitialReportsReceived = new AtomicInteger();
@@ -65,7 +64,7 @@ public class ConnectorTest {
             backendServerPort,
             backendServerAddress,
             backendServices,
-            backendServerWeight);
+            LoadBalancerConnector.WEIGHT_NOT_SET);
 
     noOfReportsReceived.set(0);
     noOfInitialReportsReceived.set(0);
@@ -154,7 +153,6 @@ public class ConnectorTest {
                 Server.newBuilder()
                     .setIpAddress(ByteString.copyFrom(backendServerAddress.getAddress()))
                     .setPort(backendServerPort)
-                    .setWeight(backendServerWeight)
                     .addAllServices(Arrays.asList(backendServices)))
             .build(),
         initialReport.get());

@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
  * until LB is online. This ensures that there is at most one RPC opened at any given time.
  */
 class SingleLoadBalancerConnector {
-  private static final int WEIGHT_NOT_DEFINED = -1;
   private static final Logger logger = LoggerFactory.getLogger(SingleLoadBalancerConnector.class);
   private final ManagedChannelBuilder channelBuilder;
   private final InetAddress serverAddress;
@@ -170,7 +169,7 @@ class SingleLoadBalancerConnector {
               .setPort(serverPort)
               .addAllServices(Arrays.asList(services));
 
-      if (serverWeight != WEIGHT_NOT_DEFINED) {
+      if (serverWeight != LoadBalancerConnector.WEIGHT_NOT_SET) {
         serverDetails.setWeight(serverWeight);
       }
 

@@ -187,6 +187,10 @@ public class AvailableServerList {
       }
 
       BackendServer bs = (BackendServer) o;
+      if (bs.address == null) {
+        return address == null;
+      }
+
       return bs.address.equals(address);
     }
 

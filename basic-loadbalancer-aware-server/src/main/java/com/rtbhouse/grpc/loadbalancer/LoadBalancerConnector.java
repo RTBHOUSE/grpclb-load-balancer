@@ -36,19 +36,20 @@ public class LoadBalancerConnector {
       int serverPort,
       InetAddress serverAddress,
       String[] services,
-      List<Pair<String, Integer>> s,
+      List<Address> lbAddresses,
       int serverWeight) {
     this.status = ConnectorStatus.STOPPED;
 
     this.lbConnectors =
-        s.stream()
+        lbAddresses
+            .stream()
             .map(
                 address ->
                     new SingleLoadBalancerConnector(
                         serverPort,
                         serverAddress,
-                        address.getFirst(),
-                        address.getSecond(),
+                        address.hostName,
+                        address.port,
                         services,
                         serverWeight))
             .collect(Collectors.toList());
@@ -86,25 +87,21 @@ public class LoadBalancerConnector {
     this(serverPort, serverAddress, serviceDnsName, services, WEIGHT_NOT_SET);
   }
 
-  private static List<Pair<String, Integer>> getLbConnectorsList(String[] lbAddresses) {
-    List<Pair<String, Integer>> list = new ArrayList<>();
-    for (String address : lbAddresses) {
-      String[] parsed = address.split(":");
-      if (parsed.length != 2)
-        throw new IllegalArgumentException(
-            "Load balancer address should be in host:serverPort format.");
-      list.add(new Pair<>(parsed[0], Integer.parseInt(parsed[1])));
+  private static List<Address> getLbConnectorsList(String[] lbAddresses) {
+    List<Address> list = new ArrayList<>();
+    for (String hostPortString : lbAddresses) {
+      list.add(new Address(hostPortString));
     }
     return list;
   }
 
-  private static List<Pair<String, Integer>> getResolvedLbAdresses(String dnsName) {
+  private static List<Address> getResolvedLbAdresses(String dnsName) {
     DnsSrvResolver resolver = DnsSrvResolvers.newBuilder().dnsLookupTimeoutMillis(10000).build();
 
     return resolver
         .resolve(GRPCLB_DNS_PREFIX + dnsName)
         .stream()
-        .map(r -> new Pair<>(r.host(), r.port()))
+        .map(r -> new Address(r.host(), r.port()))
         .collect(Collectors.toList());
   }
 
@@ -167,5 +164,24 @@ public class LoadBalancerConnector {
     STOPPED,
     WORKING,
     PAUSED;
+  }
+
+  private static class Address {
+    private String hostName;
+    private Integer port;
+
+    private Address(String hostPortString) {
+      String[] parsed = hostPortString.split(":");
+      if (parsed.length != 2)
+        throw new IllegalArgumentException(
+            "Load balancer address should be in host:serverPort format.");
+      hostName = parsed[0];
+      port = Integer.parseInt(parsed[1]);
+    }
+
+    private Address(String hostName, Integer port) {
+      this.hostName = hostName;
+      this.port = port;
+    }
   }
 }
