@@ -5,11 +5,11 @@ COPY . /sources
 
 #ENV BUILDERS_SHARE=/root/builders_share
 #CMD mvn -T1C -f pom.xml clean install -Duser.home=${BUILDERS_SHARE} -Dmaven.test.skip -am -pl :loadbalancer-standalone
+
+RUN mvn -T1C -f pom.xml clean install -Dmaven.test.skip -am -pl :loadbalancer-standalone
 RUN echo $(pwd)
 RUN echo $(ls)
 RUN echo $(ls ..)
-
-CMD mvn -T1C -f pom.xml clean install -Dmaven.test.skip -am -pl :loadbalancer-standalone
 
 FROM openjdk:11.0.1
 
