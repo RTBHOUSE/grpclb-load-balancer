@@ -2,7 +2,6 @@ package com.rtbhouse.grpc.loadbalancer;
 
 import com.google.protobuf.ByteString;
 import com.rtbhouse.grpc.loadbalancer.ServerSignupGrpc.ServerSignupStub;
-import io.grpc.ConnectivityState;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
@@ -29,14 +28,26 @@ import org.slf4j.LoggerFactory;
  *
  * <p>stopped -> connecting -> working -> paused -> connecting -> working -> (...)
  *
- * <p>stopped -> connecting -> paused -> connecting -> working -> (...)
+ * <p>stopped -> connecting -> paused_when_connecting -> connecting -> working -> (...)
+ *
+ * <p>stopped -> connecting -> paused_when_connecting -> paused -> connecting -> working -> (...)
  *
  * <p>The intermediate 'connecting' state is set, when RPC to the load balancer was started, but the
  * LB haven't responded yet. It is a short phase, when LB is online, or may last longer, when LB is
  * offline.
  *
- * <p>We use a gRPC exponential backoff retries to send requests in increasing intervals of time
- * until LB is online. This ensures that there is at most one RPC opened at any given time.
+ * <p>We use a gRPC withWaitForReady mechanism, which allows us to automatically queue requests to
+ * the LB when it is offline. Normally, when someone calls pause(), we would end the RPC by calling
+ * onCompleted(). But, we don't want to put in the queue new RPCs/onCompleted with every
+ * pause/resume sequence (we can't cancel previous one, it stays in the queue until LB becomes
+ * online). So, if we want to pause the connector which is in connecting state, we don't cancel
+ * current RPC. Instead, we change state to 'paused_when_connecting'. If 'resume()' method sees this
+ * state, it won't create new RPC.
+ *
+ * <p>If, in the 'paused_when_connecting' state, LB becomes online, then the RPC is delivered to it,
+ * LB sends initial response, and then RPC is immediately ended and status is set to 'paused'.
+ * Server doesn't appear on the LB list though, because LB puts a server on its list after first
+ * "real" heartbeat, not initialReport.
  */
 class SingleLoadBalancerConnector {
   private static final Logger logger = LoggerFactory.getLogger(SingleLoadBalancerConnector.class);
@@ -104,7 +115,9 @@ class SingleLoadBalancerConnector {
    * and now it is being removed). Then changes connector status to stopped and closes the channel.
    */
   synchronized void stop() {
-    if (status == SingleConnectorStatus.WORKING || status == SingleConnectorStatus.CONNECTING) {
+    if (status == SingleConnectorStatus.WORKING
+        || status == SingleConnectorStatus.CONNECTING
+        || status == SingleConnectorStatus.PAUSED_WHEN_CONNECTING) {
       /* We have to change state to stopped before calling endRPC(), because in
        * SignupReplyStreamObserver.onCompleted() callback
        * we would reconnect with LB, if we would see state e.g. WORKING */
@@ -125,17 +138,16 @@ class SingleLoadBalancerConnector {
   }
 
   /**
-   * Sets connection (starts RPC) with the given load balancer. Using gRPC exponential backoff retry
-   * mechanism, sends initial reports periodically in increasing time intervals until load balancer
-   * is ready to receive it. Once the first reply from load balancer is received, starts sending
-   * reports with the requested frequency. Callbacks (onCompleted, onError) from
-   * SignupReplyStreamObserver ensure reconnecting with load balancer in case of an error (ex. loss
-   * of network connection) or when load balancer calls onCompleted even though the server is
-   * working correctly.
+   * Sets connection (starts RPC) with the given load balancer. Waits for sending the initial report
+   * until load balancer is ready to receive it (using withWaitForReady mechanism). Once the first
+   * reply from load balancer is received, starts sending reports with the requested frequency.
+   * Callbacks (onCompleted, onError) from SignupReplyStreamObserver ensure reconnecting with load
+   * balancer in case of an error (ex. loss of network connection) or when load balancer calls
+   * onCompleted even though the server is working correctly.
    */
   private void connectWithLoadBalancer() {
     logger.debug("Connecting to load balancer (starting signup rpc)...");
-    reportObserver = lbAsyncStub.signup(new SignupReplyStreamObserver());
+    reportObserver = lbAsyncStub.withWaitForReady().signup(new SignupReplyStreamObserver());
   }
 
   /**
@@ -143,8 +155,10 @@ class SingleLoadBalancerConnector {
    * and sends the initial report.
    */
   private synchronized void reconnectWithLoadBalancer() {
-    if (status == SingleConnectorStatus.STOPPED || status == SingleConnectorStatus.PAUSED) {
-      logger.debug("No reconnect - connector stopped, paused");
+    if (status == SingleConnectorStatus.STOPPED
+        || status == SingleConnectorStatus.PAUSED
+        || status == SingleConnectorStatus.PAUSED_WHEN_CONNECTING) {
+      logger.debug("No reconnect - connector stopped, paused or paused_when_connecting");
       return;
     }
 
@@ -191,7 +205,7 @@ class SingleLoadBalancerConnector {
       logger.debug("Sending heartbeat: ready to serve {}", report.getReadyToServe());
 
     } else {
-      logger.info(
+      logger.debug(
           "Requested to send report when connector status is neither CONNECTING nor WORKING "
               + "(it is: {})",
           status);
@@ -212,22 +226,40 @@ class SingleLoadBalancerConnector {
   private synchronized void endRPC() {
     logger.debug("Ending RPC...");
 
+    /* PAUSED_WHEN_CONNECTING state indicates, that connector is paused, but RPC is still opened,
+     * now we are ending RPC so we change state to PAUSED.
+     */
+    if (status == SingleConnectorStatus.PAUSED_WHEN_CONNECTING)
+      status = SingleConnectorStatus.PAUSED;
+
     if (signUpHandle != null && !signUpHandle.isCancelled()) {
       signUpHandle.cancel(true);
     }
     reportObserver.onCompleted();
   }
 
-  /** Marks that the connector was paused and ends current rpc. */
+  /** Marks that the connector was paused. If needed, ends current rpc. */
   synchronized void pause() {
-    status = SingleConnectorStatus.PAUSED;
-    endRPC();
+    if (status == SingleConnectorStatus.CONNECTING) {
+      logger.debug("Paused when connecting (not ending RPC)...");
+      status = SingleConnectorStatus.PAUSED_WHEN_CONNECTING;
+    } else {
+      status = SingleConnectorStatus.PAUSED;
+      endRPC();
+    }
   }
 
-  /** Marks that the connector status changed to resumed and reconnects with load balancer. */
+  /**
+   * Marks that the connector status changed to resumed and reconnects with load balancer if needed.
+   */
   synchronized void resume() {
-    status = SingleConnectorStatus.CONNECTING;
-    reconnectWithLoadBalancer();
+    if (status == SingleConnectorStatus.PAUSED_WHEN_CONNECTING) {
+      logger.debug("Connector was paused when connecting - no new RPC is needed");
+      status = SingleConnectorStatus.CONNECTING;
+    } else {
+      status = SingleConnectorStatus.CONNECTING;
+      reconnectWithLoadBalancer();
+    }
   }
 
   /** For details about those states, read class comment. */
@@ -235,7 +267,8 @@ class SingleLoadBalancerConnector {
     STOPPED,
     CONNECTING,
     WORKING,
-    PAUSED;
+    PAUSED,
+    PAUSED_WHEN_CONNECTING;
   }
 
   private class SignupReplyStreamObserver implements StreamObserver<LoadBalancerSignupReply> {
@@ -255,27 +288,17 @@ class SingleLoadBalancerConnector {
     @Override
     public void onError(Throwable throwable) {
       logger.warn("ServerSignup failed: {}", Status.fromThrowable(throwable).getDescription());
-
       synchronized (SingleLoadBalancerConnector.this) {
-        if (status == SingleConnectorStatus.WORKING || status == SingleConnectorStatus.CONNECTING) {
-          endRPC();
-          if (lbChannel.getState(true) != ConnectivityState.READY) {
-            lbChannel.notifyWhenStateChanged(
-                lbChannel.getState(true),
-                SingleLoadBalancerConnector.this::reconnectWithLoadBalancer);
-          } else {
-            reconnectWithLoadBalancer();
-          }
-        }
+        handlePossibleReconnection();
       }
     }
 
     @Override
     public void onCompleted() {
       logger.debug("ServerSignup: loadbalancer closed connection");
-      if (status == SingleConnectorStatus.WORKING || status == SingleConnectorStatus.CONNECTING)
-        endRPC();
-      reconnectWithLoadBalancer();
+      synchronized (SingleLoadBalancerConnector.this) {
+        handlePossibleReconnection();
+      }
     }
 
     private void handleInitialResponse(LoadBalancerSignupReply reply) {
@@ -294,8 +317,26 @@ class SingleLoadBalancerConnector {
                 0, /* initial delay */
                 reply.getHeartbeatsFrequency(), /* further delays */
                 TimeUnit.MILLISECONDS);
+      } else if (status == SingleConnectorStatus.PAUSED_WHEN_CONNECTING) {
+        /* Load balancer has been offline for some time, and then someone paused the connector.
+         * Now, load balancer went online, but the connector is still paused, so we
+         * end the rpc */
+        logger.debug(
+            "Connector was paused_when_connecting, and load balancer sent initial response. "
+                + "Changing state to paused.");
+        status = SingleConnectorStatus.PAUSED;
+        endRPC();
       } else if (status == SingleConnectorStatus.WORKING) {
         logger.warn("Load balancer sent initial response more than once!");
+      }
+    }
+
+    private void handlePossibleReconnection() {
+      if (status == SingleConnectorStatus.WORKING
+          || status == SingleConnectorStatus.CONNECTING
+          || status == SingleConnectorStatus.PAUSED_WHEN_CONNECTING) {
+        endRPC();
+        reconnectWithLoadBalancer();
       }
     }
   }
