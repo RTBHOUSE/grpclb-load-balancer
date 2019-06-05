@@ -1,0 +1,339 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.rtbhouse.grpc</groupId>
+    <artifactId>grpc-load-balancer</artifactId>
+    <packaging>pom</packaging>
+    <version>1.0-SNAPSHOT</version>
+    <name>grpc-load-balancer</name>
+    <modules>
+        <module>loadbalancer-standalone</module>
+        <module>common</module>
+        <module>basic-loadbalancer-aware-server</module>
+        <module>examples/hello-world-common</module>
+        <module>examples/hello-world-client</module>
+        <module>examples/hello-world-lbaware-server</module>
+    </modules>
+
+    <properties>
+        <project.version>1.0</project.version>
+        <java.version>8</java.version>
+
+        <grpc.version>1.16.1</grpc.version>
+        <proto.google.common.protos.version>1.0.0</proto.google.common.protos.version>
+        <protobuf.version>3.5.1</protobuf.version>
+        <protoc.version>3.5.1-1</protoc.version>
+        <apache.curator.version>2.9.1</apache.curator.version>
+        <apache.curator.tests.version>2.12.0</apache.curator.tests.version>
+        <apache.commons.cli.version>1.4</apache.commons.cli.version>
+        <slf4j.version>1.7.25</slf4j.version>
+        <logback.version>1.0.13</logback.version>
+        <awaitility.version>3.0.0</awaitility.version>
+        <junit.version>4.11</junit.version>
+        <mockito.version>2.23.4</mockito.version>
+
+        <os.maven.plugin.version>1.5.0.Final</os.maven.plugin.version>
+        <maven.compiler.plugin.version>3.8.0</maven.compiler.plugin.version>
+        <maven.shade.plugin.version>3.1.1</maven.shade.plugin.version>
+        <maven-git-code-format.version>1.20</maven-git-code-format.version>
+        <fmt-maven-plugin.version>2.6.0</fmt-maven-plugin.version>
+
+        <shaded.main.class>NonExistingClass</shaded.main.class>  <!-- just a placeholder -->
+    </properties>
+
+    <!--<repositories>-->
+        <!--<repository>-->
+            <!--<id>Adpilot</id>-->
+            <!--<url>http://nexus.adpilot-rtb.net:8081/content/groups/public</url>-->
+        <!--</repository>-->
+    <!--</repositories>-->
+
+    <distributionManagement>
+        <repository>
+            <id>Adpilot</id>
+            <name>Internal Releases</name>
+            <url>http://nexus.adpilot-rtb.net:8081/content/repositories/releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>Adpilot-snapshots</id>
+            <name>Internal Snapshots</name>
+            <url>http://nexus.adpilot-rtb.net:8081/content/repositories/snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- GRPC dependencies -->
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-netty-shaded</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-protobuf</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-stub</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-grpclb</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-services</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.api.grpc</groupId>
+                <artifactId>proto-google-common-protos</artifactId>
+                <version>${proto.google.common.protos.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java-util</artifactId>
+                <version>${protobuf.version}</version>
+            </dependency>
+
+            <!-- Latest 2.X.X version, as 3.X.X is not compatible with ZooKeeper stable-->
+            <dependency>
+                <groupId>org.apache.curator</groupId>
+                <artifactId>curator-framework</artifactId>
+                <version>${apache.curator.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.curator</groupId>
+                <artifactId>curator-recipes</artifactId>
+                <version>${apache.curator.version}</version>
+            </dependency>
+
+            <!-- for command line arguments parsing -->
+            <dependency>
+                <groupId>commons-cli</groupId>
+                <artifactId>commons-cli</artifactId>
+                <version>${apache.commons.cli.version}</version>
+            </dependency>
+
+            <!-- Logging. Sl4j + logback -->
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>${logback.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+
+            <!-- For DNS SRV records resolving -->
+            <dependency>
+                <groupId>com.spotify</groupId>
+                <artifactId>dns</artifactId>
+                <version>3.1.5</version>
+            </dependency>
+
+            <!--test dependecies-->
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.curator</groupId>
+                <artifactId>curator-test</artifactId>
+                <version>${apache.curator.tests.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>${awaitility.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+                <version>${mockito.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-testing</artifactId>
+                <version>${grpc.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- dependencies on our own artifacts -->
+            <dependency>
+                <groupId>com.rtbhouse.grpc</groupId>
+                <artifactId>common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.rtbhouse.grpc</groupId>
+                <artifactId>hello-world-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.rtbhouse.grpc</groupId>
+                <artifactId>basic-loadbalancer-aware-server</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <profiles>
+        <!-- to set Java version: if JRE 8, we have to use source and target flags; starting from JRE 9 we should use
+         release flag (if not, grpc packages can't be compiled) -->
+        <profile>
+            <id>java9-and-above</id>
+            <activation>
+                <jdk>[1.9,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <release>${java.version}</release>
+                        </configuration>
+                        <version>${maven.compiler.plugin.version}</version>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>only-java8</id>
+            <activation>
+                <jdk>1.8</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <source>1.8</source>
+                            <target>1.8</target>
+                        </configuration>
+                        <version>${maven.compiler.plugin.version}</version>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+    <build>
+
+        <!-- for compiling .proto -->
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>${os.maven.plugin.version}</version>
+            </extension>
+        </extensions>
+        <pluginManagement>
+            <plugins>
+                <!-- for compiling .proto -->
+                <plugin>
+                    <groupId>org.xolstice.maven.plugins</groupId>
+                    <artifactId>protobuf-maven-plugin</artifactId>
+                    <configuration>
+                        <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+                        <pluginId>grpc-java</pluginId>
+                        <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
+                        <outputDirectory >${project.basedir}/target/generated-sources</outputDirectory>
+                        <protoSourceRoot>${project.basedir}/src/main/proto</protoSourceRoot>
+                        <protoTestSourceRoot>${project.basedir}/src/test/proto</protoTestSourceRoot>
+                        <clearOutputDirectory>false</clearOutputDirectory>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>classes</id>
+                            <phase>generate-sources</phase>
+                            <goals>
+                                <goal>compile</goal>
+                                <goal>compile-custom</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>test-classes</id>
+                            <configuration>
+                                <outputDirectory>${project.basedir}/target/generated-test-sources</outputDirectory>
+                            </configuration>
+                            <phase>generate-test-sources</phase>
+                            <goals>
+                                <goal>test-compile</goal>
+                                <goal>test-compile-custom</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <version>0.6.1</version>
+                </plugin>
+
+                <!-- for creating executable JAR (uber JAR) -->
+                <!-- in child pom.xml, you should specify only shaded.main.class property -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>${maven.shade.plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>shade</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <shadedArtifactAttached>true</shadedArtifactAttached>
+                        <transformers>
+                            <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                <manifestEntries>
+                                    <Main-Class>${shaded.main.class}</Main-Class>
+                                </manifestEntries>
+                            </transformer>
+                        </transformers>
+                        <filters>
+                            <filter>
+                                <artifact>*:*</artifact>
+                                <excludes>
+                                    <exclude>META-INF/*.SF</exclude>
+                                    <exclude>META-INF/*.DSA</exclude>
+                                    <exclude>META-INF/*.RSA</exclude>
+                                </excludes>
+                            </filter>
+                        </filters>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <!-- these plugins will be enabled by default in all children modules -->
+        <plugins>
+            <plugin>
+                <groupId>com.coveo</groupId>
+                <artifactId>fmt-maven-plugin</artifactId>
+                <version>${fmt-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>format</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+

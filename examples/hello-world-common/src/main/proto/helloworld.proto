@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.rtbhouse.grpc.lbexamples";
+option java_outer_classname = "HelloWorldProto";
+option objc_class_prefix = "HLW";
+
+package com.rtbhouse.grpc.loadbalancer;
+
+// The greeting service definition.
+service Greeter {
+    // Sends a greeting
+    rpc SayHello (HelloRequest) returns (HelloReply) {}
+}
+
+message HelloRequest {
+    string message = 1;
+}
+
+// Response contains server's address
+message HelloReply {
+    string message = 1;
+    string addr = 2;
+}
