@@ -58,3 +58,10 @@ $ java -Dio.grpc.internal.DnsNameResolverProvider.enable_grpclb=true -jar exampl
 
 #### Healthchecks
 With `basic-loadbalancer-aware-server` you can use your custom healthcheck, provided as [Health service](https://github.com/grpc/grpc/blob/master/doc/health-checking.md) implementation. Server will run an InProcessServer with this service, call `Check` every 5s (can be configured) and inform LB about status changes (by `pause()` and `resume()` in `LBConnector`).
+
+### Enabling grpclb in different languages on the client side
+**Java**: flag `-Dio.grpc.internal.DnsNameResolverProvider.enable_grpclb=true` and for channel creation: `ManagedChannelBuilder.forTarget(<dns service name, without _grpclb._tcp>)`
+
+**Python**: set environment variable `GRPC_DNS_RESOLVER=ares` and for channel creation use as a target `dns:///<dns service name, without _grpclb._tcp>`
+
+**Go**: add `import _ "google.golang.org/grpc/balancer/grpclb"` and similar to Python, as endpoint set `dns:///<dns service name, without _grpclb._tcp>`
