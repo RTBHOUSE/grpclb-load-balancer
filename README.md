@@ -31,16 +31,16 @@ A fully working example, you will find in the `examples` folder. There are `hell
 #   LB will pass this information to servers.
 # time-to-evict (shorter: evict) -  if LB won't receive heartbeat that long,
 #   backend server is evicted from LB list (ms)
-$ java -jar loadbalancer-standalone/target/loadbalancer-standalone-1.0-SNAPSHOT-shaded.jar -port 9090 -heartbeats-frequency 3000 -time-to-evict 4000
+$ java -jar loadbalancer-standalone/target/loadbalancer-standalone-1.0-shaded.jar -port 9090 -heartbeats-frequency 3000 -time-to-evict 4000
 ```
 
 2) Run a few backend servers, the example `HelloWorldLBServer` shows how to use `BasicLoadbalancerAwareGrpcServer`:
 ```sh
 # example usage, for configuration possibilities during experiments use -help option 
-$ java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-SNAPSHOT-shaded.jar -p 2222 -lb "127.0.0.1:9090" -s "hello.mimgrpc.me:2222"
+$ java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-shaded.jar -p 2222 -lb "127.0.0.1:9090" -s "hello.mimgrpc.me:2222"
 
 # if you are testing everything locally, on one machine, use
-$ LOCAL=1 java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-SNAPSHOT-shaded.jar -p 2222 -lb "127.0.0.1:9090" -s "hello.mimgrpc.me:2222"
+$ LOCAL=1 java -jar examples/hello-world-lbaware-server/target/hello-world-lbaware-server-1.0-shaded.jar -p 2222 -lb "127.0.0.1:9090" -s "hello.mimgrpc.me:2222"
 
 # The server has to send its IP to the loadbalancer and by default, 
 # it autodiscovers its public IP, but, if you don't have any, setting LOCAL=1
@@ -53,7 +53,7 @@ $ LOCAL=1 java -jar examples/hello-world-lbaware-server/target/hello-world-lbawa
 3) Finally, you can run clients:
 ```sh
 # In args[0], you must specify host:port for the service you want to connect. You can also add number of requests being done in args[1], default is 100; after every request client sleeps for 300ms.
-$ java -Dio.grpc.internal.DnsNameResolverProvider.enable_grpclb=true -jar examples/hello-world-client/target/hello-world-client-1.0-SNAPSHOT-shaded.jar "hello.mimgrpc.me:2222" 100
+$ java -Dio.grpc.internal.DnsNameResolverProvider.enable_grpclb=true -jar examples/hello-world-client/target/hello-world-client-1.0-shaded.jar "hello.mimgrpc.me:2222" 100
 ```
 
 #### Healthchecks
