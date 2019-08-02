@@ -19,10 +19,9 @@
         <project.version>1.0</project.version>
         <java.version>8</java.version>
 
-        <grpc.version>1.16.1</grpc.version>
+        <grpc.version>1.22.1</grpc.version>
         <proto.google.common.protos.version>1.0.0</proto.google.common.protos.version>
-        <protobuf.version>3.5.1</protobuf.version>
-        <protoc.version>3.5.1-1</protoc.version>
+        <protobuf.version>3.6.1</protobuf.version>
         <apache.curator.version>2.9.1</apache.curator.version>
         <apache.curator.tests.version>2.12.0</apache.curator.tests.version>
         <apache.commons.cli.version>1.4</apache.commons.cli.version>
@@ -40,13 +39,6 @@
 
         <shaded.main.class>NonExistingClass</shaded.main.class>  <!-- just a placeholder -->
     </properties>
-
-    <!--<repositories>-->
-        <!--<repository>-->
-            <!--<id>Adpilot</id>-->
-            <!--<url>http://nexus.adpilot-rtb.net:8081/content/groups/public</url>-->
-        <!--</repository>-->
-    <!--</repositories>-->
 
     <distributionManagement>
         <repository>
