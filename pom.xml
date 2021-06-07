@@ -26,7 +26,7 @@
         <apache.curator.tests.version>2.12.0</apache.curator.tests.version>
         <apache.commons.cli.version>1.4</apache.commons.cli.version>
         <slf4j.version>1.7.25</slf4j.version>
-        <logback.version>1.0.13</logback.version>
+        <logback.version>1.2.0</logback.version>
         <awaitility.version>3.0.0</awaitility.version>
         <junit.version>4.11</junit.version>
         <mockito.version>2.23.4</mockito.version>
